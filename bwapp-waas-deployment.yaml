@@ -31,13 +31,10 @@ spec:
       - image: fimal/bwapp:3.2
         imagePullPolicy: IfNotPresent
         name: app-bwapp
-        env:
-          #should be put in secret
-        - name: MYSQL_ROOT_PASSWORD
-          value: "bug"
-        - name: MYSQL_IP
-          value: "mysql"
-        command: [ "sh","-c"," ./start.sh && /usr/bin/supervisord" ]
+        volumeMounts:
+        - name: bwapp-php-setting
+          mountPath: "/var/www/html/bWAPP/admin"        
+        #command: [ "/usr/bin/supervisord" ]
         resources: {}
         terminationMessagePath: /dev/termination-log
         terminationMessagePolicy: File
@@ -114,14 +111,15 @@ spec:
       shareProcessNamespace: true
       terminationGracePeriodSeconds: 30
       volumes:
-      - configMap:
-          defaultMode: 420
+      - name: securebeat-ca-volume
+        configMap:
           name: waas-securebeat-ca-config
-        name: securebeat-ca-volume
       - name: securebeat-client-volume
         secret:
-          defaultMode: 420
           secretName: waas-securebeat-client-secret
+      - name: bwapp-php-setting
+        secret:
+          secretName: bwapp-php-setting        
       - emptyDir: {}
         name: logs-volume
 ---
