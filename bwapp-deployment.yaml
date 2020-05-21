@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bwapp
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+       app: bwapp     
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+         app: bwapp     
+    spec:
+      containers:
+      - image: fimal/bwapp:3.2
+        imagePullPolicy: IfNotPresent
+        name: bwapp
+        env:
+          #should be put in secret
+        - name: MYSQL_ROOT_PASSWORD
+          value: "bug"
+        - name: MYSQL_IP
+          value: "mysql"
+        command: [ "sh","-c"," ./start.sh && /usr/bin/supervisord" ]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bwapp
+spec:
+  selector:
+    app: bwapp
+  ports:
+  - name: http-80
+    port: 80
+    protocol: TCP
+    targetPort: 80
+  type: LoadBalancer

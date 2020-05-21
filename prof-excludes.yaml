@@ -1,0 +1,77 @@
+apiVersion: waas.radware.com/v1beta1
+kind: Profile
+metadata:
+  name: waas-sample-bwapp-profile
+  namespace: kwaf
+spec:
+  policies:
+  - classifiers:
+    - hostname: '*'
+      id: fonts
+      path:
+        operand: Prefix
+        value: /fonts
+      protectionId: fonts-prot
+    - hostname: '*'
+      id: images
+      path:
+        operand: Prefix
+        value: /images
+      protectionId: images-prot
+    - hostname: '*'
+      id: bwapp1_classifier
+      path:
+        operand: Prefix
+        value: /
+      protectionId: bwapp1_protection
+    name: bwapp1Policy
+    operatorEmail: support@radware.com
+    protections:
+    - expressions:
+        opMode: Passive
+      id: bwapp1_protection
+      signatures:
+        opMode: Passive
+      whitelist:
+        excludes:
+        - isRegex: false
+          method: GET
+          pattern: '*.php'
+        - isRegex: false
+          method: POST
+          pattern: '*.php'
+        - isRegex: false
+          method: GET
+          pattern: /
+        opMode: Passive
+    - expressions:
+        opMode: Bypass
+      id: images-prot
+      signatures:
+        opMode: Bypass
+      whitelist:
+        excludes:
+        - isRegex: false
+          method: GET
+          pattern: /images/favicon.ico
+        - isRegex: false
+          method: GET
+          pattern: '*.bmp'
+        - isRegex: false
+          method: GET
+          pattern: '*.png'
+        - isRegex: false
+          method: GET
+          pattern: '*.jpg'
+        opMode: Passive
+    - expressions:
+        opMode: Bypass
+      id: fonts-prot
+      signatures:
+        opMode: Bypass
+      whitelist:
+        excludes:
+        - isRegex: false
+          method: GET
+          pattern: '*.ttf'
+        opMode: Passive

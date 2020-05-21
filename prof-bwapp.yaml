@@ -1,0 +1,25 @@
+apiVersion: waas.radware.com/v1beta1
+kind: Profile
+metadata:
+  annotations:
+  name: waas-sample-bwapp-profile
+  namespace: kwaf
+spec:
+  policies:
+  - classifiers:
+    - hostname: '*'
+      id: bwapp_classifier
+      path:
+        operand: Prefix
+        value: /
+      protectionId: bwapp_protection
+    name: bwapp1Policy
+    operatorEmail: support@radware.com
+    protections:
+    - expressions:
+        opMode: Bypass
+      id: bwapp_protection
+      signatures:
+        opMode: Bypass
+      whitelist:
+        opMode: Bypass

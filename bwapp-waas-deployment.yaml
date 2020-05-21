@@ -1,0 +1,154 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+  labels:
+    app.kubernetes.io/instance: WAAS-bwapp
+    app.kubernetes.io/name: WAAS-bwapp
+  name: waas-sample-bwapp-deployment
+  namespace: default
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      configid: waas-sample-bwapp-container
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app.kubernetes.io/instance: WAAS-bwapp
+        app.kubernetes.io/name: WAAS-bwapp
+        configid: waas-sample-bwapp-container
+    spec:
+      containers:
+      - image: fimal/bwapp:3.2
+        imagePullPolicy: IfNotPresent
+        name: app-bwapp
+        env:
+          #should be put in secret
+        - name: MYSQL_ROOT_PASSWORD
+          value: "bug"
+        - name: MYSQL_IP
+          value: "mysql"
+        command: [ "sh","-c"," ./start.sh && /usr/bin/supervisord" ]
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+      - image: devart01:8081/waas-img-reg/waas-bootstrap:1.2.1
+        imagePullPolicy: IfNotPresent
+        name: enforcer
+        command:
+        - /wrapper.sh
+        - -m=waas-controller-service
+        - -n=kwaf  
+        - -p=kwaf/waas-sample-bwapp1-profile
+        - -t=app-bwapp
+        - -e
+        - -c=9000:bwapp1Policy:127.0.0.1:80
+        - -l=$HOSTNAME_access.log
+        - -f=$HOSTNAME_security.log
+        env:
+        - name: ENFORCER_OPT_L
+          value: info
+        - name: ENFORCER_OPT_BASE_ID
+          value: "322"
+        livenessProbe:
+          failureThreshold: 30000
+          httpGet:
+            path: /
+            port: 9000
+            scheme: HTTP
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        ports:
+        - containerPort: 19010
+          name: stats
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 30000
+          httpGet:
+            path: /bWAPP/install.php?install=yes
+            port: 9000
+            scheme: HTTP
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /logs
+          name: logs-volume
+      - image: devart01:8081/waas-img-reg/waas-logrotate:1.2.1
+        imagePullPolicy: IfNotPresent
+        name: logrotate
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /logs
+          name: logs-volume
+      - image: devart01:8081/waas-img-reg/waas-fluentbit:1.2.1
+        imagePullPolicy: IfNotPresent
+        name: fluentbit
+        env:
+        - name: FB_LS_HOST
+          value: waas-logstash-service.kwaf.svc.cluster.local
+        - name: FB_PREFIX
+          value: bwapp-inline.kwaf
+        volumeMounts:
+        - mountPath: /etc/securebeat/client
+          name: securebeat-client-volume
+        - mountPath: /etc/securebeat/ca
+          name: securebeat-ca-volume
+        - mountPath: /logs
+          name: logs-volume
+      shareProcessNamespace: true
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - configMap:
+          defaultMode: 420
+          name: waas-securebeat-ca-config
+        name: securebeat-ca-volume
+      - name: securebeat-client-volume
+        secret:
+          defaultMode: 420
+          secretName: waas-securebeat-client-secret
+      - emptyDir: {}
+        name: logs-volume
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/instance: WAAS
+    app.kubernetes.io/name: WAAS
+    waas-prometheus-service: monitor      
+  name: bwapp
+  annotations:
+    metallb.universe.tf/address-pool: addr-pool1
+spec:
+  type: LoadBalancer
+  ports:
+  - name: http
+    port: 80
+    protocol: TCP
+    targetPort: 9000
+  - name: stats
+    port: 8080
+    protocol: TCP
+    targetPort: 19010
+  - name: fb-stats
+    port: 2020
+    protocol: TCP
+    targetPort: 2020 
+  selector:
+    configid: waas-sample-bwapp-container      
