@@ -17,13 +17,12 @@ RUN apt-get install -y\
     php5.6-mysqlnd \
     wget \
     unzip \
-    curl \
-    supervisor
+    curl 
 
 WORKDIR /var/www/html/
 
 # copy supervisor configuration
-COPY ./bwapp_front.conf /etc/supervisor/conf.d/bwapp.conf
+#COPY ./bwapp_front.conf /etc/supervisor/conf.d/bwapp.conf
 
 # download bWAPP
 RUN wget http://jaist.dl.sourceforge.net/project/bwapp/bWAPP/bWAPP_latest.zip && unzip bWAPP_latest.zip &&\
@@ -42,5 +41,6 @@ RUN /etc/init.d/apache2 restart &&\
 
 EXPOSE 80
 
+CMD ["/usr/sbin/apachectl","-DFOREGROUND"]
 # start supervisord
-CMD ["/usr/bin/supervisord"]
+#CMD ["/usr/bin/supervisord"]
